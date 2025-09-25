@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lívia</title>
+  <style>
+    :root{
+      --bg:#0f1724;
+      --accent:#ffcc00;
+      --card:#0b1220;
+      --glass: rgba(255,255,255,0.06);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+    body{background:linear-gradient(180deg,#071226 0%, #071a2b 60%), var(--bg); color:#fff;display:flex;align-items:center;justify-content:center}
+
+    /* Container */
+    .stage{width:100%;height:100vh;display:grid;place-items:center;padding:24px}
+    .card{width:980px;max-width:100%;min-height:380px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:20px;padding:36px;box-shadow:0 10px 30px rgba(2,6,23,0.6);position:relative;overflow:hidden}
+
+    /* Initial screen */
+    .intro{display:flex;flex-direction:column;gap:20px;align-items:center;justify-content:center;height:100%;text-align:center}
+    .btn{
+      appearance:none;border:0;padding:14px 28px;border-radius:12px;background:linear-gradient(90deg,#ff7a18,#ffcc00);color:#081226;font-weight:700;font-size:18px;cursor:pointer;box-shadow:0 8px 30px rgba(255,140,0,0.12);transition:transform .18s ease}
+    .btn:active{transform:translateY(2px) scale(.995)}
+
+    .title{font-size:28px;font-weight:700;letter-spacing:-0.5px}
+    .subtitle{color:rgba(255,255,255,0.75)}
+
+    /* Main celebration screen */
+    .celebrate{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px;gap:12px;opacity:0;pointer-events:none;transform:scale(.98);transition:all .6s cubic-bezier(.2,.9,.23,1)}
+    .celebrate.show{opacity:1;pointer-events:auto;transform:scale(1)}
+    .celebrate h1{font-size:46px;margin:0;line-height:1; text-shadow:0 6px 24px rgba(0,0,0,0.6)}
+    .celebrate p{margin:0;color:rgba(255,255,255,0.85);font-size:18px}
+
+    /* Balloons container */
+    .balloon-area{position:absolute;left:0;right:0;bottom:0;top:0;pointer-events:none;overflow:hidden}
+
+    .balloon{
+      position:absolute;bottom:-120px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;filter:drop-shadow(0 12px 18px rgba(3,10,30,0.6));
+      transform-origin:center bottom;
+      animation:rise var(--dur) linear forwards, sway var(--sway) ease-in-out infinite alternate;
+    }
+    .balloon .shape{width:64px;height:84px;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;display:block;position:relative}
+    .balloon .knot{width:14px;height:10px;background:rgba(0,0,0,0.06);transform:rotate(20deg);border-radius:3px;margin-top:-6px}
+    .string{width:2px;height:90px;background:linear-gradient(180deg, rgba(255,255,255,0.18), rgba(0,0,0,0.06));border-radius:2px}
+
+    /* colors */
+    .c1 .shape{background:linear-gradient(180deg,#ff8da1,#ff5472)}
+    .c2 .shape{background:linear-gradient(180deg,#ffd37a,#ffb13b)}
+    .c3 .shape{background:linear-gradient(180deg,#9be7ff,#3bb0ff)}
+    .c4 .shape{background:linear-gradient(180deg,#d6a2ff,#b86dff)}
+    .c5 .shape{background:linear-gradient(180deg,#8ef39c,#39d36a)}
+
+    @keyframes rise{to{transform:translateY(-130vh) scale(1.05)}}
+    @keyframes sway{from{transform:translateX(-6px) rotate(-6deg)} to{transform:translateX(6px) rotate(6deg)}}
+
+    /* small responsive tweaks */
+    @media (max-width:520px){
+      .card{padding:20px;border-radius:14px}
+      .celebrate h1{font-size:32px}
+      .balloon .shape{width:48px;height:64px}
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="card" role="main">
+      <!-- Intro -->
+      <div class="intro" id="intro">
+        </div>
+        <button class="btn" id="startBtn">clique aqui</button>
+      </div>
+
+      <!-- Celebration -->
+      <div class="celebrate" id="celebrate" aria-hidden="true">
+        <h1>Feliz aniversário, véi!</h1>
+        <p>Você é muito especial pra mim, por mais que vc me odeie, vou estar sempre aqui ❤</p>
+      </div>
+
+      <!-- Balloons area -->
+      <div class="balloon-area" id="balloonArea" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <script>
+    // elements
+    const startBtn = document.getElementById('startBtn');
+    const intro = document.getElementById('intro');
+    const celebrate = document.getElementById('celebrate');
+    const balloonArea = document.getElementById('balloonArea');
+
+    // config
+    const BALLOON_TYPES = ['c1','c2','c3','c4','c5'];
+    const MAX_BALLOONS = 24; // total created
+    const SPAWN_INTERVAL = 260; // ms
+
+    startBtn.addEventListener('click', () => {
+      // hide intro
+      intro.style.transition = 'all .6s ease';
+      intro.style.opacity = '0';
+      intro.style.transform = 'translateY(10px) scale(.99)';
+      setTimeout(()=> intro.style.display = 'none', 650);
+
+      // show celebration
+      celebrate.classList.add('show');
+
+      // generate balloons
+      spawnBalloons(MAX_BALLOONS, SPAWN_INTERVAL);
+    });
+
+    function random(min, max){ return Math.random() * (max - min) + min }
+
+    function spawnBalloons(amount, interval){
+      let created = 0;
+      const id = setInterval(()=>{
+        if(created >= amount){ clearInterval(id); return }
+        createBalloon();
+        created++;
+      }, interval);
+    }
+
+    function createBalloon(){
+      const b = document.createElement('div');
+      const type = BALLOON_TYPES[Math.floor(Math.random()*BALLOON_TYPES.length)];
+      b.className = `balloon ${type}`;
+
+      // random horizontal start position (10% - 90%)
+      const left = Math.floor(random(6,94));
+      b.style.left = left + '%';
+
+      // random scale
+      const scale = random(0.78, 1.18).toFixed(2);
+      b.style.transform = `scale(${scale})`;
+
+      // random duration (rise)
+      const dur = (random(5.4, 11.2)).toFixed(2) + 's';
+      b.style.setProperty('--dur', dur);
+
+      // random sway time
+      const sway = (random(2.2,4.5)).toFixed(2) + 's';
+      b.style.setProperty('--sway', sway);
+
+      // DOM structure for the balloon
+      b.innerHTML = `
+        <span class="shape"></span>
+        <span class="knot"></span>
+        <span class="string"></span>
+      `;
+
+      balloonArea.appendChild(b);
+
+      // remove when animation done (add small buffer)
+      const lifetime = parseFloat(dur) * 1000 + 1200;
+      setTimeout(()=>{
+        b.remove();
+      }, lifetime);
+    }
+
+    // Accessibility: allow Enter key to trigger
+    startBtn.addEventListener('keyup', (e)=>{ if(e.key === 'Enter') startBtn.click() });
+
+    // Optional: let user click the celebrate area to replay
+    celebrate.addEventListener('click', ()=>{
+      // clear existing
+      balloonArea.innerHTML = '';
+      spawnBalloons(MAX_BALLOONS, 140);
+    });
+  </script>
+</body>
+</html>
